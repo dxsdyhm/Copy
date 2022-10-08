@@ -18,7 +18,7 @@ android {
         release {
             keyAlias 'platform'
             keyPassword 'android'
-            storeFile file('../key/platform_x3.keystore')
+            storeFile file('../key/platform.keystore')
             storePassword 'android'
         }
     }

@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">Copy</string>
-    <string name="copy">copying...</string>
+    <string name="copy">正在复制文件...</string>
 </resources>

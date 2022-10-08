@@ -1,73 +1,38 @@
 package com.hcy.copy;
 
+import static com.hcy.copy.CopyService.KEY_PATH;
+
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.ProgressDialog;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
-import android.os.Handler;
+import android.os.Environment;
 import android.os.IBinder;
 import android.util.Log;
-import android.widget.Button;
+import android.widget.ProgressBar;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
+import com.blankj.utilcode.util.ActivityUtils;
 import com.blankj.utilcode.util.FileIOUtils;
+import com.blankj.utilcode.util.FileUtils;
 import com.blankj.utilcode.util.SPUtils;
 import com.blankj.utilcode.util.ShellUtils;
 import com.blankj.utilcode.util.StringUtils;
 import com.blankj.utilcode.util.ThreadUtils;
-import com.blankj.utilcode.util.Utils;
-import com.hcy.copy.led.LEDSettings;
-import com.hcy.copy.led.LedTest;
+import com.blankj.utilcode.util.ToastUtils;
 
 import java.io.File;
 
-public class CopyService extends Service {
-    //tar -xzf @1/module_sdk.tar.gz -C /sdcard/
-    public static String KEY_PATH="KEY_PATH";
-    private LedTest test=new LedTest(new Handler());
+public class BaiService extends Service {
+    private static String DES_FILE= "/sdcard/BYHUBYENG";
+    public static String TAG_NAME="BYHUBYENG";
     private String uPath="";
-    public static String SH_NAME="copy.hcysh";
-
-    private ThreadUtils.Task copy=new ThreadUtils.SimpleTask<Boolean>() {
-        @Override
-        public Boolean doInBackground() throws Throwable {
-            //灯语
-            if(test!=null){
-                test.start("");
-            }
-            //执行命令
-            String sh= FileIOUtils.readFile2String(uPath+ File.separator+SH_NAME);
-            sh=sh.replace("@1",uPath);
-            ShellUtils.CommandResult commandResult = ShellUtils.execCmd(sh,false);
-            Log.e("dxsTag","accept------->"+commandResult);
-            stop(commandResult.result==0);
-            return commandResult.result==0;
-        }
-
-        @Override
-        public void onSuccess(Boolean result) {
-            stop(result);
-        }
-    };
-
-    private void stop(boolean result){
-        //结束灯语
-        if(result){
-            LEDSettings.onLed(LedTest.SYS_LED_FILE);
-        }else {
-            LEDSettings.offLed(LedTest.SYS_LED_FILE);
-        }
-        if(test!=null){
-            test.stop();
-        }
-        stopSelf();
-    }
-
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
@@ -95,6 +60,7 @@ public class CopyService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        ActivityUtils.startActivity(BaiTipActivity.class);
         if(intent!=null){
             uPath = intent.getStringExtra(KEY_PATH);
         }
@@ -104,13 +70,34 @@ public class CopyService extends Service {
         if(StringUtils.isTrimEmpty(uPath)){
             stopSelf();
         }
-        ThreadUtils.executeByIo(copy);
+        Log.e("dxsTag","uPath:"+uPath);
+        ThreadUtils.executeByIo(new ThreadUtils.SimpleTask<Boolean>() {
+            @Override
+            public Boolean doInBackground() throws Throwable {
+                //删除本地文件夹
+                FileUtils.deleteAllInDir(DES_FILE);
+                //拷贝u盘目录
+                String sh3="rm -rf /sdcard/BYHUBYENG";
+                String sh1="tar -cf /sdcard/BY.tar -C"+uPath+"/ BYHUBYENG/";
+                String sh2="tar xf /sdcard/BY.tar -C /sdcard/";
+                String sh4="rm -rf /sdcard/BY.tar";
+                ShellUtils.CommandResult commandResult = ShellUtils.execCmd(new String[]{sh1,sh2,sh4},false);
+                Log.e("dxsTag","accept------->"+commandResult);
+                return commandResult.result==0;
+            }
+
+            @Override
+            public void onSuccess(Boolean result) {
+                Log.e("dxsTag","result:"+result);
+                stopSelf();
+            }
+        });
         return super.onStartCommand(intent, flags, startId);
     }
 
     @Override
     public void onDestroy() {
+        ActivityUtils.finishActivity(BaiTipActivity.class);
         super.onDestroy();
-        ThreadUtils.cancel(copy);
     }
 }
